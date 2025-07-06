@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bucket Manager</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f6f8fa;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            background-color: #ffffff;
+            border: 1px solid #d1d5da;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(27,31,35,.04);
+            padding: 20px;
+            width: 100%;
+            max-width: 800px;
+            box-sizing: border-box;
+        }
+        h1 {
+            text-align: center;
+            color: #24292e;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #24292e;
+        }
+        input[type="text"] {
+            width: calc(100% - 12px);
+            padding: 8px;
+            border: 1px solid #d1d5da;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        textarea {
+            width: calc(100% - 12px);
+            height: 300px;
+            padding: 8px;
+            border: 1px solid #d1d5da;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 14px;
+            box-sizing: border-box;
+            resize: vertical;
+        }
+        button {
+            background-color: #2ea44f;
+            color: #ffffff;
+            border: 1px solid rgba(27,31,35,.15);
+            border-radius: 6px;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button:hover {
+            background-color: #2c974b;
+        }
+        #file-output {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #e6edf3;
+            border: 1px solid #c8e1ff;
+            border-radius: 6px;
+            text-align: center;
+            display: none; /* Hidden by default */
+            flex-direction: column;
+            align-items: center;
+        }
+        .file-icon {
+            font-size: 60px;
+            margin-bottom: 10px;
+            cursor: grab; /* Indicates it's draggable */
+            color: #0366d6; /* A common color for file icons */
+        }
+        .file-name-display {
+            font-size: 18px;
+            font-weight: 600;
+            color: #24292e;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Enviar Novo Arquivo</h1>
+
+        <div class="form-group">
+            <label for="filename">Nome do arquivo (ex: index.html, script.js)</label>
+            <input type="text" id="filename" placeholder="meu-arquivo.txt">
+        </div>
+
+        <div class="form-group">
+            <label for="code-content">Conteúdo do Código</label>
+            <textarea id="code-content" placeholder="Insira seu código aqui..."></textarea>
+        </div>
+
+        <button id="send-button">Enviar Arquivo</button>
+    </div>
+
+    <div id="file-output">
+        <span class="file-icon" draggable="true">📄</span>
+        <span class="file-name-display"></span>
+    </div>
+
+    <script type="module">
+        // Importe as classes necessárias do SDK do Appwrite
+        import { Client, Storage, ID } from 'https://unpkg.com/appwrite@11.0.0/dist/esm/sdk.js';
+
+        // --- Configuração do Appwrite ---
+        const client = new Client();
+
+        const APPWRITE_ENDPOINT = 'https://nyc.cloud.appwrite.io/v1'; // **SUBSTITUA PELO SEU ENDPOINT DO APPWRITE**
+        const APPWRITE_PROJECT_ID = '686a67d5003a1b4b1bf9'; // **SUBSTITUA PELO SEU ID DO PROJETO APPWRITE**
+        const APPWRITE_BUCKET_ID = '686aa77a002c60a625f9'; // **SUBSTITUA PELO ID DO SEU BUCKET NO APPWRITE**
+
+        alert('1. Iniciando configuração do Appwrite...');
+        client
+            .setEndpoint(APPWRITE_ENDPOINT)
+            .setProject(APPWRITE_PROJECT_ID);
+        alert(`2. Appwrite configurado. Endpoint: ${APPWRITE_ENDPOINT}, Projeto ID: ${APPWRITE_PROJECT_ID}`);
+
+        const storage = new Storage(client);
+
+        // --- Elementos do HTML ---
+        const sendButton = document.getElementById('send-button');
+        const filenameInput = document.getElementById('filename');
+        const codeContentTextarea = document.getElementById('code-content');
+        const fileOutputDiv = document.getElementById('file-output');
+        const fileIcon = fileOutputDiv.querySelector('.file-icon');
+        const fileNameDisplay = fileOutputDiv.querySelector('.file-name-display');
+
+        // --- Lógica de Envio para o Appwrite ---
+        sendButton.addEventListener('click', async () => {
+            alert('3. Botão "Enviar Arquivo" clicado.');
+
+            const filename = filenameInput.value.trim();
+            const codeContent = codeContentTextarea.value;
+
+            if (!filename) {
+                alert('4. Erro: Por favor, insira um nome de arquivo.');
+                return;
+            }
+            alert(`5. Nome do arquivo: "${filename}" e conteúdo obtidos.`);
+
+            // Cria um objeto File a partir do conteúdo do textarea
+            const fileBlob = new Blob([codeContent], { type: 'application/octet-stream' });
+            const fileToUpload = new File([fileBlob], filename, { type: fileBlob.type });
+            alert(`6. Objeto File criado para upload. Tamanho: ${fileToUpload.size} bytes, Tipo: ${fileToUpload.type}`);
+
+            fileNameDisplay.textContent = `Enviando "${filename}"...`;
+            fileOutputDiv.style.display = 'flex'; // Mostra a seção de status
+
+            try {
+                alert(`7. Tentando enviar arquivo para o Bucket ID: ${APPWRITE_BUCKET_ID}`);
+                const response = await storage.createFile(
+                    APPWRITE_BUCKET_ID,
+                    ID.unique(), // Gera um ID único para o arquivo no Appwrite
+                    fileToUpload
+                );
+
+                alert(`8. Arquivo enviado com sucesso! Resposta do Appwrite: ID ${response.$id}, Nome ${response.name}`);
+                console.log('Arquivo enviado com sucesso:', response);
+                fileNameDisplay.textContent = `Arquivo "${filename}" enviado com sucesso! ID: ${response.$id}`;
+
+                const fileDownloadUrl = storage.getFileDownload(APPWRITE_BUCKET_ID, response.$id);
+                alert(`9. URL de download do arquivo gerada (pode exigir permissões): ${fileDownloadUrl}`);
+
+                fileIcon.setAttribute('data-downloadurl', `${fileBlob.type}:${filename}:${fileDownloadUrl}`);
+                alert(`10. Processo de envio concluído. Arquivo "${filename}" está no Appwrite.`);
+
+                // Limpa os campos após o envio
+                filenameInput.value = '';
+                codeContentTextarea.value = '';
+
+            } catch (error) {
+                alert(`ERRO! 11. Erro ao enviar o arquivo: ${error.message}. Verifique console para mais detalhes.`);
+                console.error('Erro ao enviar o arquivo para o Appwrite:', error);
+                fileNameDisplay.textContent = `Erro: ${error.message}`;
+                fileOutputDiv.style.display = 'flex'; // Garante que a mensagem de erro seja visível
+            }
+        });
+
+        // --- Lógica de Arrastar e Baixar (mantida do seu código original) ---
+        fileIcon.addEventListener('dragstart', (e) => {
+            const downloadUrl = e.target.getAttribute('data-downloadurl');
+            if (downloadUrl) {
+                e.dataTransfer.setData('DownloadURL', downloadUrl);
+                const img = new Image();
+                img.src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+                e.dataTransfer.setDragImage(img, 0, 0);
+            } else {
+                e.preventDefault();
+            }
+        });
+    </script>
+</body>
+</html>
